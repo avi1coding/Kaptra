@@ -929,6 +929,22 @@ def suggest_style(
 # ── endpoints ────────────────────────────────────────────────────────────────
 
 
+@app.get("/")
+def root():
+    """
+    A landing spot for anyone who opens the service URL in a browser.
+
+    Without this, the bare host answers {"detail":"Not Found"}, which reads as a
+    broken deploy rather than an API with no root route.
+    """
+    return {
+        "service": "Kaptra",
+        "status": "ok",
+        "docs": "/docs",
+        "health": "/health",
+    }
+
+
 @app.get("/health")
 def health():
     return {
