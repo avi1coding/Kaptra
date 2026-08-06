@@ -837,6 +837,7 @@ export function Studio() {
       <TaskProgress status={status} />
       <Tour
         currentStep={step}
+        armed={captionsReady}
         onNavigate={setStep}
         onPreview={setTourPreview}
       />

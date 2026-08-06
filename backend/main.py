@@ -314,7 +314,10 @@ def run_whisper(path: Path, *, music: bool, translate: bool = False):
     # separate translation model and no other target language.
     common = dict(
         word_timestamps=True,
-        beam_size=5,
+        # Greedy rather than a beam search. A five-wide beam roughly triples
+        # decode time for wording differences that a two-second caption line
+        # rarely shows — and waiting is the thing people actually notice.
+        beam_size=1,
         task="translate" if translate else "transcribe",
     )
 
@@ -927,6 +930,27 @@ def suggest_style(
 
 
 # ── endpoints ────────────────────────────────────────────────────────────────
+
+
+@app.on_event("startup")
+def warm_model() -> None:
+    """
+    Load the model in the background as soon as the server boots.
+
+    It used to load on the first real request, which meant the first person to
+    caption anything waited for the download and load on top of their own
+    transcription — the slowest run was always the one being demoed.
+    """
+
+    def load() -> None:
+        try:
+            get_model()
+            log.info("whisper model warm")
+        except Exception as error:  # noqa: BLE001
+            # Not fatal: the next request will try again and surface it there.
+            log.warning("could not preload model: %s", error)
+
+    threading.Thread(target=load, name="warm-model", daemon=True).start()
 
 
 @app.get("/")

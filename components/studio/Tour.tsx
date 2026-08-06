@@ -69,10 +69,13 @@ const CARD_W = 360;
 
 export function Tour({
   currentStep,
+  armed = true,
   onNavigate,
   onPreview,
 }: {
   currentStep?: StudioStep;
+  /** True once captions have actually been asked for. */
+  armed?: boolean;
   onNavigate?: (step: StudioStep) => void;
   /**
    * Reveals the captioning controls for the duration of the tour without
@@ -111,18 +114,18 @@ export function Tour({
   }, []);
 
   /*
-   * First visit — but held back until the captions step. Opening it over the
-   * dropzone meant every card described a panel that wasn't on screen yet, and
-   * the first thing a new arrival saw was a tour of somewhere they hadn't been.
+   * First visit — held back until captions have actually been asked for.
+   * Opening it any earlier meant the cards described panels that weren't on
+   * screen yet, and a tour arrived before the thing it was touring.
    */
   useEffect(() => {
-    if (currentStep !== "captions") return;
+    if (currentStep !== "captions" || !armed) return;
     try {
       if (!localStorage.getItem(SEEN_KEY)) setOpen(true);
     } catch {
       /* private browsing — showing it again is a fine failure mode */
     }
-  }, [currentStep]);
+  }, [currentStep, armed]);
 
   /* put the Studio on the screen this step is describing */
   useEffect(() => {
