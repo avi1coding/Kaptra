@@ -1,0 +1,18 @@
+# Kaption backend — Whisper transcription + ffmpeg burn-in.
+#
+# faster-whisper is deliberate: it bundles PyAV, so it decodes audio straight
+# out of an MP4 without shelling out to a system ffmpeg. Only the final burn-in
+# step needs ffmpeg on PATH.
+fastapi==0.118.0
+uvicorn[standard]==0.37.0
+python-multipart==0.0.20
+faster-whisper==1.2.0
+# Frame sampling for the vision-based style suggestion.
+pillow==11.3.0
+# huggingface_hub needs this to download the model weights on first run, but
+# doesn't pull it in itself.
+requests==2.32.5
+
+# Optional: enables the LLM emphasis pass. Without an ANTHROPIC_API_KEY the
+# backend omits emphasis and the front end falls back to its own scorer.
+anthropic==0.120.2

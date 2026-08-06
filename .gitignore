@@ -1,0 +1,16 @@
+node_modules
+.next
+out
+.env
+.env.local
+.DS_Store
+*.tsbuildinfo
+next-env.d.ts
+
+# backend
+__pycache__/
+venv/
+.venv/
+work/
+
+# swap public/demo.mp4 for your own clip; the committed one is a placeholder
