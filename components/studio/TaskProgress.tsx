@@ -10,17 +10,8 @@ import {
 } from "@/lib/progress";
 import type { RenderStatus } from "@/lib/types";
 
-/** How long the bar stays up after finishing, so short jobs aren't a flicker. */
 const LINGER_MS = 1600;
 
-/**
- * Floating progress readout, pinned top-centre.
- *
- * Portalled to <body> rather than rendered in place: a transform, filter or
- * containment on any ancestor re-bases `position: fixed` to that ancestor, and
- * the Studio grid is full of candidates. This way it can't be repositioned or
- * clipped by anything.
- */
 export function TaskProgress({ status }: { status: RenderStatus }) {
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
@@ -33,8 +24,6 @@ export function TaskProgress({ status }: { status: RenderStatus }) {
       setVisible(true);
       return;
     }
-    // A 3-second clip encodes almost instantly; without this the bar would
-    // appear and vanish before anyone could read it.
     const timer = setTimeout(() => setVisible(false), LINGER_MS);
     return () => clearTimeout(timer);
   }, [busy]);

@@ -4,8 +4,6 @@ const base: CaptionStyle = {
   font: "black",
   size: 6.5,
   color: "#FFFFFF",
-  // Emphasis must not share a colour with the active word, or the AI's picks
-  // are invisible — every word turns that colour as it's spoken anyway.
   emphasisColor: "#FF4D6D",
   activeColor: "#FFE600",
   outlineColor: "#000000",

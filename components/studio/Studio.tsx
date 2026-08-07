@@ -30,17 +30,12 @@ import { Panel, Toggle } from "./controls";
 
 const backendReady = isBackendConfigured();
 
-/** Everything a single undo step can move. */
 type Doc = {
   style: CaptionStyle;
   words: Word[];
   presetId: string | null;
 };
 
-/**
- * Controls that fire continuously — a slider sweep or a caption drag. Edits to
- * these merge into one undo step so a gesture doesn't cost thirty of them.
- */
 const CONTINUOUS_CONTROLS = new Set([
   "anchor", "size", "margin", "outline", "shadow", "maxWords",
   "color", "activeColor", "emphasisColor", "outlineColor", "boxColor",
@@ -50,41 +45,28 @@ export function Studio() {
   const [file, setFile] = useState<File | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [duration, setDuration] = useState(MOCK_DURATION);
-  // Style, transcript and preset move together under one undo history — a
-  // single Cmd+Z should step back whatever the last edit was, wherever it was.
   const doc = useUndoable<Doc>({
     style: DEFAULT_PRESET.style,
     words: MOCK_WORDS,
     presetId: DEFAULT_PRESET.id,
   });
   const { style, words, presetId } = doc.value;
-  // "" = caption in whatever language was spoken.
   const [language, setLanguage] = useState<string | null>(null);
   const [transcriptWarning, setTranscriptWarning] = useState<string | null>(null);
   const [status, setStatus] = useState<RenderStatus>({ state: "idle" });
   const [videoPlaying, setVideoPlaying] = useState(false);
   const [videoTime, setVideoTime] = useState(0);
-  // The clip's true pixel dimensions. They set both the preview's shape and
-  // the .ass canvas, so captions keep their proportions on any aspect ratio.
   const [frame, setFrame] = useState<Frame>(DEFAULT_FRAME);
-  /**
-   * ffmpeg decodes far more containers than any browser will play — MKV, AVI,
-   * WMV and friends upload and render fine but can't be shown in a <video>.
-   * When that happens we fall back to the synthetic backdrop so styling still
-   * works, rather than leaving a dead black rectangle.
-   */
   const [previewUnsupported, setPreviewUnsupported] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [step, setStep] = useState<Step>("clip");
-  // Captioning is opt-in: plenty of Shorts don't want burned-in text, and
-  // transcribing a clip nobody asked to caption is work for nothing.
   const [captionsAsked, setCaptionsAsked] = useState(false);
   const [transcribed, setTranscribed] = useState(false);
   const [tourPreview, setTourPreview] = useState(false);
-  // Identifies the render the backend still holds, so it can post it directly.
   const [renderJobId, setRenderJobId] = useState<string | null>(null);
-  // Skipping is a deliberate choice worth showing back to the user, so it is
-  // tracked separately from "not done yet".
+  const [uploadTitle, setUploadTitle] = useState("");
+  const [uploadDescription, setUploadDescription] = useState("");
+  const [uploadPrivacy, setUploadPrivacy] = useState("public");
   const [skipped, setSkipped] = useState<Record<Step, boolean>>({
     clip: false,
     captions: false,
@@ -101,18 +83,12 @@ export function Studio() {
   const hasVideo = videoUrl !== null;
   const canPlay = hasVideo && !previewUnsupported;
   const aspect = frame.width / frame.height;
-  // While a clip is uploading, transcribing or rendering, the transcript and
-  // style are already committed to that job — letting playback or edits run
-  // would show something the output won't match.
   const locked = isBusy(status);
 
-  // Without a playable <video> — demo mode, or an unsupported container — a
-  // synthetic playhead drives the preview so the transport behaves the same.
   const demo = usePlayhead(duration, !canPlay);
   const time = canPlay ? videoTime : demo.time;
   const playing = canPlay ? videoPlaying : demo.playing;
 
-  /* ── playback clock ──────────────────────────────────────────────── */
   useEffect(() => {
     if (!canPlay || !videoPlaying) return;
     let frame = 0;
@@ -125,7 +101,11 @@ export function Studio() {
     return () => cancelAnimationFrame(frame);
   }, [canPlay, videoPlaying]);
 
-  /* ── object URL lifecycle ────────────────────────────────────────── */
+  useEffect(() => {
+    if (step === "captions") return;
+    videoRef.current?.pause();
+  }, [step]);
+
   useEffect(() => {
     return () => {
       if (videoUrl) URL.revokeObjectURL(videoUrl);
@@ -138,15 +118,12 @@ export function Studio() {
     };
   }, []);
 
-  /* ── loading a clip ──────────────────────────────────────────────── */
   const runTranscription = useCallback(
     async (target: File) => {
       try {
         setStatus({ state: "uploading", progress: 0 });
         const result = await transcribe(
           target,
-          // Once the bytes are up, Whisper is what we're waiting on — showing
-          // "Uploading 100%" for the whole model pass reads as a stall.
           (progress) =>
             setStatus(
               progress >= 1
@@ -156,8 +133,6 @@ export function Studio() {
         );
         const fresh = ensureEmphasis(result.words ?? []);
         setTranscribed(true);
-        // A new transcript is a new document — keeping the old history would
-        // let undo restore words from a clip that is no longer loaded.
         doc.reset((d) => ({ ...d, words: fresh }));
         setLanguage(result.language ?? null);
         setTranscriptWarning(result.warning ?? null);
@@ -175,8 +150,6 @@ export function Studio() {
       }
       return null;
     },
-    // doc.reset is stable; listing `doc` would re-create this every keystroke.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 
@@ -197,10 +170,6 @@ export function Studio() {
     [videoUrl],
   );
 
-  /**
-   * With no backend the sample transcript is stretched to the clip's length,
-   * so the captions still track real footage during a demo.
-   */
   const handleMetadata = () => {
     const video = videoRef.current;
     if (!video) return;
@@ -213,10 +182,8 @@ export function Studio() {
       doc.reset((d) => ({ ...d, words: fitToDuration(MOCK_WORDS, video.duration) }));
   };
 
-  /* ── style ───────────────────────────────────────────────────────── */
   const patchStyle = (patch: Partial<CaptionStyle>) => {
     const keys = Object.keys(patch);
-    // Continuous controls collapse a whole gesture into one undo step.
     const coalesce =
       keys.length === 1 && CONTINUOUS_CONTROLS.has(keys[0]) ? keys[0] : undefined;
     doc.update(
@@ -240,7 +207,6 @@ export function Studio() {
     }));
   };
 
-  /* ── freeze playback while work is in flight ─────────────────────── */
   useEffect(() => {
     if (!locked) return;
     const video = videoRef.current;
@@ -251,14 +217,7 @@ export function Studio() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locked]);
 
-  /* ── fullscreen ──────────────────────────────────────────────────── */
   const openFullscreen = () => {
-    // Promote the stage node that already holds the <video>. Rendering a
-    // second <video> in an overlay instead meant a fresh element starting at
-    // time 0 while the original kept decoding behind it — the picture
-    // restarted and its audio carried on. One element can't desync from
-    // itself. Must fire inside the click: the API refuses calls made outside
-    // a user gesture.
     stageRef.current?.requestFullscreen?.().catch(() => {});
     setFullscreen(true);
   };
@@ -268,8 +227,6 @@ export function Studio() {
     setFullscreen(false);
   };
 
-
-  /* ── AI style suggestion ─────────────────────────────────────────── */
   const askForStyle = async () => {
     if (!file) return;
     setSuggesting(true);
@@ -280,7 +237,6 @@ export function Studio() {
         file,
         words.map((w) => w.text).join(" "),
       );
-      // One undo step: the whole suggestion is a single decision to reject.
       doc.update((d) => ({
         ...d,
         style: { ...d.style, ...(patch as Partial<CaptionStyle>), anchor: null },
@@ -296,14 +252,12 @@ export function Studio() {
     }
   };
 
-  /* ── undo / redo ─────────────────────────────────────────────────── */
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (!(event.metaKey || event.ctrlKey)) return;
       if (event.key.toLowerCase() !== "z" && event.key.toLowerCase() !== "y")
         return;
 
-      // Don't hijack undo inside a text field or colour picker.
       const target = event.target as HTMLElement | null;
       if (
         target &&
@@ -323,7 +277,6 @@ export function Studio() {
     return () => window.removeEventListener("keydown", onKey);
   }, [doc]);
 
-  /* ── transport — drives the video or the demo playhead ───────────── */
   const seek = (seconds: number) => {
     if (locked) return;
     if (!canPlay) {
@@ -354,9 +307,6 @@ export function Studio() {
     }
   };
 
-  // Read through a ref so this binds once per fullscreen session rather than
-  // per render — re-subscribing every frame of playback is what used to tear
-  // fullscreen back down.
   const togglePlayRef = useRef(togglePlay);
   togglePlayRef.current = togglePlay;
 
@@ -369,8 +319,6 @@ export function Studio() {
         togglePlayRef.current();
       }
     };
-    // Chrome swallows the Escape keydown when it exits fullscreen itself, so
-    // this — not onKey — is what usually closes us.
     const onFsChange = () => {
       if (!document.fullscreenElement) setFullscreen(false);
     };
@@ -382,10 +330,7 @@ export function Studio() {
     };
   }, [fullscreen]);
 
-  /* ── export ──────────────────────────────────────────────────────── */
   const ass = useMemo(() => buildAss(words, style, frame), [words, style, frame]);
-
-
 
   const startRender = async () => {
     if (!file) return;
@@ -400,7 +345,6 @@ export function Studio() {
               ? { state: "rendering", percent: 0 }
               : { state: "uploading", progress },
           ),
-        // Real percentage straight from ffmpeg, not a staged guess.
         onRender: (percent) => setStatus({ state: "rendering", percent }),
       });
       if (outputUrlRef.current) URL.revokeObjectURL(outputUrlRef.current);
@@ -408,9 +352,6 @@ export function Studio() {
       outputUrlRef.current = url;
       setStatus({ state: "done", url });
 
-      // The button says "Download clip", so it downloads. Leaving the file
-      // sitting behind a second click made the label a promise the step didn't
-      // keep.
       const link = document.createElement("a");
       link.href = url;
       link.download = downloadName;
@@ -456,8 +397,6 @@ export function Studio() {
 
   const stepStates: Record<Step, StepState> = {
     clip: settle("clip", Boolean(file)),
-    // Ticked once captions actually exist. Waiting for a render meant styling
-    // a clip and moving on left the step looking untouched.
     captions: settle(
       "captions",
       status.state === "done" || (captionsAsked && transcribed),
@@ -465,8 +404,6 @@ export function Studio() {
     upload: "todo",
   };
 
-  // Without a backend there is nothing to wait for — the sample transcript is
-  // already loaded, so the controls can appear the moment captions are asked for.
   const captionsReady =
     (captionsAsked && (transcribed || !backendReady)) || tourPreview;
 
@@ -481,21 +418,11 @@ export function Studio() {
     if (position > 0) setStep(STEP_ORDER[position - 1]);
   };
 
-  // You can't caption a clip you haven't picked, so step one is the one thing
-  // that has to be done rather than skipped.
   const canAdvance = step !== "clip" || Boolean(file);
-  // Nothing on the captions step is mandatory, but leaving mid-render would
-  // strand the job, so Next waits for it.
   const nextBlocked = step === "captions" && locked;
 
-  /* The captioned render if there is one, otherwise the clip as it came in —
-     skipping the captions step still has to leave something to upload. */
   const finalVideoUrl = status.state === "done" ? status.url : videoUrl;
 
-  /* YouTube takes its default title straight from the file name, so the export
-     keeps yours. Naming every download "kaptra-short" meant every upload
-     arrived pre-titled "kaptra-short". Extension is forced to .mp4 because
-     that is what the render produces, whatever went in. */
   const downloadName = file
     ? `${file.name.replace(/\.[^.]+$/, "")}.mp4`
     : "video.mp4";
@@ -507,7 +434,6 @@ export function Studio() {
         states={stepStates}
         onSelect={setStep}
         onBack={position > 0 ? goBack : undefined}
-        // Only the genuinely optional steps offer it.
         onSkip={
           step === "captions" ? () => advance(true) : undefined
         }
@@ -528,7 +454,15 @@ export function Studio() {
           videoUrl={finalVideoUrl}
           fileName={downloadName}
           jobId={renderJobId}
+          sourceFile={file}
           captioned={status.state === "done"}
+          hasCaptions={captionsReady && words.length > 0}
+          title={uploadTitle}
+          description={uploadDescription}
+          privacy={uploadPrivacy}
+          onTitle={setUploadTitle}
+          onDescription={setUploadDescription}
+          onPrivacy={setUploadPrivacy}
           onBackToCaptions={() => setStep("captions")}
           onRestart={() => {
             reset();
@@ -607,9 +541,6 @@ export function Studio() {
               column's height, whatever shape the video is. */}
           <div
             data-tour="preview"
-            // The viewport-height fit only makes sense in the desktop app
-            // shell; as an inline style it also applied on phones, where the
-            // column scrolls and it just made the preview needlessly small.
             className="w-full max-w-[340px] lg:w-[min(340px,var(--preview-w))]"
             style={
               { "--preview-w": `calc((100dvh - 15rem) * ${aspect.toFixed(4)})` } as React.CSSProperties
@@ -628,7 +559,6 @@ export function Studio() {
                 style={
                   fullscreen
                     ? {
-                        // Fit whichever dimension runs out first.
                         height: `min(calc(100vh - 9rem), 100vw / ${aspect})`,
                         width: "auto",
                         aspectRatio: aspect,
@@ -640,9 +570,6 @@ export function Studio() {
               <ShortFrame
                 aspect={aspect}
                 overlay={
-                  // Nothing to preview until captions have been asked for —
-                  // showing the sample words over the clip while the panel next
-                  // to it asks "Add captions?" reads as already done.
                   captionsReady ? (
                     <CaptionOverlay
                       words={words}
@@ -810,12 +737,12 @@ export function Studio() {
         </div>
 
         <ExportCard
-          fileName={downloadName}
           status={status}
           hasVideo={hasVideo}
           backendConfigured={backendReady}
           onRender={startRender}
           onReset={reset}
+          onUpload={() => setStep("upload")}
         />
         <div data-tour="style" className="space-y-4">
           <StylePanel
@@ -884,7 +811,6 @@ function HistoryButton({
   );
 }
 
-/** Best-effort pretty name for a Whisper language code. */
 function languageName(code: string): string {
   try {
     return (
@@ -895,16 +821,6 @@ function languageName(code: string): string {
   }
 }
 
-/**
- * Full-viewport review pass — the last look before committing to a render.
- * The same CaptionOverlay draws here, sized off the container, so the captions
- * scale up with the frame instead of staying preview-sized.
- */
-/**
- * Close button and transport for fullscreen. Deliberately holds no <video> of
- * its own — it renders *inside* the stage element the browser has promoted, so
- * the clip playing behind it is the same DOM node that was playing inline.
- */
 function FullscreenChrome({
   playing,
   time,

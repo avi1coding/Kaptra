@@ -2,11 +2,6 @@
 
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
-/**
- * Fades content up as it scrolls into view, once. Honours
- * prefers-reduced-motion by showing everything immediately — a landing page
- * shouldn't be unreadable for anyone who's turned animation off.
- */
 export function Reveal({
   children,
   delay = 0,
@@ -46,7 +41,6 @@ export function Reveal({
 
   return (
     <Tag
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ref={ref as any}
       className={className}
       style={{

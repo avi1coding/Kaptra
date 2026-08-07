@@ -11,15 +11,9 @@ type Props = {
   onSeek: (seconds: number) => void;
 };
 
-/** How long to stop following the playhead after the user scrolls by hand. */
 const FOLLOW_PAUSE_MS = 2500;
-/** Window in which incoming scroll events are assumed to be our own doing. */
 const PROGRAMMATIC_MS = 700;
 
-/**
- * The transcript doubles as the emphasis editor: the model's picks are shown
- * as highlights, and any of them can be overruled with a click.
- */
 export function TranscriptPanel({
   words,
   time,
@@ -42,9 +36,6 @@ export function TranscriptPanel({
     const now = performance.now();
     if (now < followPausedUntil.current) return;
 
-    // Centre the active word by scrolling *this box only*. scrollIntoView would
-    // walk up and scroll every ancestor too, which hijacks the page while the
-    // user is trying to scroll it themselves.
     const target = el.offsetTop - box.clientHeight / 2 + el.clientHeight / 2;
     const max = box.scrollHeight - box.clientHeight;
     const next = Math.max(0, Math.min(target, max));

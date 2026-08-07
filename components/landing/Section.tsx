@@ -1,11 +1,6 @@
 import type { ReactNode } from "react";
 import { Reveal } from "@/components/Reveal";
 
-/**
- * One shell for every landing section — same max width, same vertical rhythm,
- * same eyebrow/title/lead hierarchy. Sections used to each invent their own
- * layout, which is most of what made the page feel busy.
- */
 export function Section({
   id,
   eyebrow,
@@ -20,7 +15,6 @@ export function Section({
   title: ReactNode;
   lead?: ReactNode;
   children?: ReactNode;
-  /** `raised` gets a subtle panel background to break up long scrolls */
   tone?: "plain" | "raised";
   align?: "left" | "center";
 }) {

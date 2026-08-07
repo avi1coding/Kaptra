@@ -1,10 +1,6 @@
 import { autoEmphasize } from "./emphasis";
 import type { Word } from "./types";
 
-/**
- * Demo transcript used when no backend is configured, so the Studio is fully
- * explorable — style picker, preview, .ass export — before Whisper is wired up.
- */
 const SCRIPT =
   "Four score and seven years ago our fathers brought forth on this continent, " +
   "a new nation, conceived in Liberty, and dedicated to the proposition that " +
@@ -12,13 +8,11 @@ const SCRIPT =
   "whether that nation, or any nation so conceived and so dedicated, can long " +
   "endure.";
 
-/** Rough speaking rate used to fake timings: seconds per character, plus pauses. */
 const SEC_PER_CHAR = 0.058;
 const MIN_WORD = 0.16;
 const WORD_GAP = 0.045;
 const SENTENCE_PAUSE = 0.34;
 
-/** Fake plausible word timings for a line of text (demo + emphasis preview). */
 export function wordsFromText(script: string, offset = 0.4): Word[] {
   const tokens = script.trim().split(/\s+/);
   const words: Word[] = [];
@@ -40,10 +34,6 @@ export const MOCK_WORDS: Word[] = autoEmphasize(wordsFromText(SCRIPT));
 export const MOCK_DURATION =
   MOCK_WORDS.length > 0 ? MOCK_WORDS[MOCK_WORDS.length - 1].end + 0.6 : 0;
 
-/**
- * Stretch or squeeze the demo transcript to match whatever clip the user
- * dropped in, so the preview stays in sync with real footage.
- */
 export function fitToDuration(words: Word[], duration: number): Word[] {
   if (!duration || !isFinite(duration) || words.length === 0) return words;
   const span = words[words.length - 1].end - words[0].start;

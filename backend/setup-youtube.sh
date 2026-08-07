@@ -1,9 +1,4 @@
 #!/usr/bin/env bash
-# Writes backend/.env with your Google OAuth credentials.
-#
-# Avoids hand-editing a dotfile — TextEdit frequently refuses to save files
-# beginning with "." or quietly appends .txt, which is the usual reason the
-# backend still reports configured: false.
 
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -20,7 +15,6 @@ read -r -s -p "Client secret : " CLIENT_SECRET   # -s so it isn't echoed
 echo
 echo
 
-# Trim stray whitespace from copy-paste.
 CLIENT_ID="$(printf '%s' "$CLIENT_ID" | tr -d '[:space:]')"
 CLIENT_SECRET="$(printf '%s' "$CLIENT_SECRET" | tr -d '[:space:]')"
 
@@ -37,7 +31,6 @@ esac
 if [ -f .env ]; then
   cp .env ".env.backup.$(date +%s)"
   echo "Existing .env backed up."
-  # Drop any previous Google lines so this doesn't append duplicates.
   grep -v -E '^\s*(export\s+)?GOOGLE_CLIENT_(ID|SECRET)=' .env > .env.tmp || true
   mv .env.tmp .env
 fi

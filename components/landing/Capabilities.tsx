@@ -1,10 +1,6 @@
 import { PRESETS } from "@/lib/presets";
 import { VIDEO_EXTENSIONS } from "@/lib/video-formats";
 
-/**
- * Countable facts, not claims. Every figure comes from the code beside it, so
- * the grid can't drift out of date the way a hand-written feature list does.
- */
 const TILES = [
   {
     figure: String(VIDEO_EXTENSIONS.length),

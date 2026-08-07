@@ -2,7 +2,6 @@
 
 import { Dropzone } from "./Dropzone";
 
-/** Step one: the clip itself. Nothing is read or transcribed until asked. */
 export function ClipStep({
   file,
   duration,

@@ -6,26 +6,15 @@ import { ShortFrame, SyntheticFootage } from "@/components/ShortFrame";
 import { DEMO_WORDS } from "@/lib/demo-captions";
 import { PRESETS } from "@/lib/presets";
 
-/** Swap this file to show your own footage on the landing page. */
 const CLIP = "/messi-edit.mp4";
 
-/**
- * Two frames of the same clip playing in step — one as a muted scroller sees
- * it, one with Kaptra. Side by side rather than a drag-slider: a slider clips
- * through the middle of a word, which reads as broken text rather than as an
- * absence of captions.
- */
 export function BeforeAfter() {
   const plainRef = useRef<HTMLVideoElement>(null);
   const captionedRef = useRef<HTMLVideoElement>(null);
   const [time, setTime] = useState(0);
   const [broken, setBroken] = useState(false);
-  // No fitting or stretching — these are the clip's own words at the times
-  // they were actually said.
   const words = DEMO_WORDS;
 
-  // The `autoPlay` attribute alone is unreliable — iOS Safari in particular
-  // wants an explicit call, and it can be missed if metadata lands late.
   useEffect(() => {
     if (broken) return;
     const start = () => {
@@ -36,8 +25,6 @@ export function BeforeAfter() {
       }
     };
     start();
-    // Retry once media is actually ready, and on the first interaction, for
-    // browsers that hold playback until the user touches the page.
     const onReady = () => start();
     plainRef.current?.addEventListener("canplay", onReady);
     captionedRef.current?.addEventListener("canplay", onReady);
@@ -49,8 +36,6 @@ export function BeforeAfter() {
     };
   }, [broken]);
 
-  // The captioned side drives the clock; the plain side is nudged back into
-  // step if it drifts, so the two panels stay the same moment of the same clip.
   useEffect(() => {
     if (broken) return;
     let frame = 0;

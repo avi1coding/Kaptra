@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 
-/** Hairline under the nav showing how far through the page you are. */
 export function ScrollProgress() {
   const [progress, setProgress] = useState(0);
 

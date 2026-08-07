@@ -10,17 +10,8 @@ export const STEPS: { id: Step; label: string; blurb: string }[] = [
 
 export const STEP_ORDER: Step[] = STEPS.map((s) => s.id);
 
-/** Every step reports one of these, so the bar can show progress at a glance. */
 export type StepState = "done" | "skipped" | "todo";
 
-/**
- * The spine of the Studio: where you are, and the only way to move.
- *
- * Every step is clickable, in any order. Next and Skip walk it in sequence for
- * anyone who wants that, but nothing is locked — arriving at the upload screen
- * with nothing to upload is recoverable, and being unable to get back to a step
- * is not.
- */
 export function StepBar({
   current,
   states,
@@ -33,7 +24,6 @@ export function StepBar({
 }: {
   current: Step;
   states: Record<Step, StepState>;
-  /** Jump straight to any step. */
   onSelect?: (step: Step) => void;
   onBack?: () => void;
   onSkip?: () => void;

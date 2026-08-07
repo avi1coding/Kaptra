@@ -3,13 +3,6 @@
 import { useRef, useState } from "react";
 import { VIDEO_EXTENSIONS } from "@/lib/video-formats";
 
-/**
- * Browsers report MIME types inconsistently — a .mkv can arrive as
- * `video/x-matroska`, `video/webm`, or an empty string depending on the OS. So
- * the extension list is what actually opens these files in the picker, and the
- * check below trusts extensions as much as the reported type.
- */
-
 const ACCEPT = ["video/*", ...VIDEO_EXTENSIONS.map((e) => `.${e}`)].join(",");
 
 function extensionOf(name: string) {
@@ -17,15 +10,9 @@ function extensionOf(name: string) {
   return dot === -1 ? "" : name.slice(dot + 1).toLowerCase();
 }
 
-/**
- * Deliberately permissive: the backend decodes with ffmpeg's demuxers, which
- * handle far more than any browser will admit to. Anything that isn't
- * obviously a document or an image gets a chance.
- */
 function looksLikeVideo(file: File) {
   if (file.type.startsWith("video/")) return true;
   if (VIDEO_EXTENSIONS.includes(extensionOf(file.name))) return true;
-  // Unknown type and unknown extension — let the backend be the judge.
   return file.type === "";
 }
 

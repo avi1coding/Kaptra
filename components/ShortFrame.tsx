@@ -1,9 +1,5 @@
 import type { ReactNode } from "react";
 
-/**
- * A 9:16 phone-ish frame. `children` is whatever plays inside it — a real
- * <video> in the Studio, or the synthetic backdrop on the landing page.
- */
 export function ShortFrame({
   children,
   overlay,
@@ -14,14 +10,11 @@ export function ShortFrame({
   children?: ReactNode;
   overlay?: ReactNode;
   className?: string;
-  /** width ÷ height of the clip; defaults to a 9:16 Short */
   aspect?: number;
   rounded?: number;
 }) {
   return (
     <div
-      // The frame matches the real clip so a landscape or square video isn't
-      // cropped into a portrait window — what you preview is what renders.
       style={{ aspectRatio: aspect, borderRadius: rounded }}
       className={`relative w-full overflow-hidden border border-line bg-ink-2 shadow-[0_40px_120px_-40px_rgba(0,0,0,.9)] ${className}`}
     >
@@ -31,7 +24,6 @@ export function ShortFrame({
   );
 }
 
-/** Stand-in footage: a slow-drifting mesh gradient with a film-grain overlay. */
 export function SyntheticFootage() {
   return (
     <div className="absolute inset-0" aria-hidden>
@@ -50,7 +42,6 @@ export function SyntheticFootage() {
   );
 }
 
-/** The scrubber + mute pill that make the frame read as "a Short". */
 export function ShortChrome({ progress = 0 }: { progress?: number }) {
   return (
     <div className="pointer-events-none absolute inset-0" aria-hidden>

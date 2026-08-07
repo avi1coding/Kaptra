@@ -13,7 +13,6 @@ export function Panel({
   action?: ReactNode;
   children: ReactNode;
   className?: string;
-  /** marks this panel as a stop on the Studio tour */
   tourId?: string;
 }) {
   return (

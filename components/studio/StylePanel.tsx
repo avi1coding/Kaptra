@@ -17,7 +17,6 @@ type Props = {
   presetId: string | null;
   onPreset: (id: string) => void;
   onChange: (patch: Partial<CaptionStyle>) => void;
-  /** null when no clip is loaded — suggestion needs footage to look at */
   onSuggest: (() => void) | null;
   suggesting: boolean;
   suggestion: string | null;
@@ -220,8 +219,6 @@ export function StylePanel({
               { value: "middle", label: "Middle" },
               { value: "bottom", label: "Bottom" },
             ]}
-            // Picking a preset clears any dragged position, so the two never
-            // disagree about where the captions live.
             onChange={(position) => onChange({ position, anchor: null })}
           />
         </Field>

@@ -2,10 +2,6 @@
 
 import { TOUR_EVENT } from "./Tour";
 
-/**
- * Lives in the nav, but the tour lives inside the Studio — a window event
- * bridges them without threading state through a server component.
- */
 export function TourButton() {
   return (
     <button

@@ -6,6 +6,7 @@ import {
   youtubeAuthorizeUrl,
   youtubeStatus,
   youtubeUpload,
+  youtubeUploadFile,
 } from "@/lib/api";
 
 type Phase =
@@ -14,38 +15,39 @@ type Phase =
   | { state: "done"; url: string; studioUrl: string }
   | { state: "error"; message: string };
 
-/**
- * Posts the finished Short straight to YouTube.
- *
- * The video is already on the machine that renders it, so this hands it over
- * server-to-server — the browser never re-sends the file and there is nothing
- * to drag anywhere. Saving the MP4 by hand stays available underneath for
- * anyone who'd rather post it themselves.
- */
 export function UploadStep({
   videoUrl,
   fileName,
   jobId,
+  sourceFile,
   captioned,
+  hasCaptions,
+  title,
+  description,
+  privacy,
+  onTitle,
+  onDescription,
+  onPrivacy,
   onBackToCaptions,
   onRestart,
 }: {
   videoUrl: string | null;
-  /** the clip's own name, used when saving the file */
   fileName: string;
-  /** identifies the render the backend still holds */
   jobId: string | null;
+  sourceFile: File | null;
   captioned: boolean;
+  hasCaptions: boolean;
+  title: string;
+  description: string;
+  privacy: string;
+  onTitle: (value: string) => void;
+  onDescription: (value: string) => void;
+  onPrivacy: (value: string) => void;
   onBackToCaptions: () => void;
   onRestart: () => void;
 }) {
   const [status, setStatus] = useState<YouTubeStatus | null>(null);
   const [phase, setPhase] = useState<Phase>({ state: "idle" });
-  const [privacy, setPrivacy] = useState("public");
-  // Deliberately empty. Guessing a title from the file name meant uploads went
-  // out called "IMG_4821" unless you noticed and changed it.
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
 
   const refresh = useCallback(async () => {
     try {
@@ -63,8 +65,6 @@ export function UploadStep({
     try {
       const url = await youtubeAuthorizeUrl();
       const popup = window.open(url, "kaptra-youtube", "width=520,height=680");
-      // Google redirects back to the backend, which closes the tab; poll for
-      // the resulting token rather than trying to read across origins.
       const timer = setInterval(async () => {
         await refresh();
         if (popup?.closed) clearInterval(timer);
@@ -79,12 +79,18 @@ export function UploadStep({
   };
 
   const post = async () => {
-    if (!jobId) return;
+    if (!jobId && !sourceFile) return;
     setPhase({ state: "uploading", percent: 0 });
     try {
-      const result = await youtubeUpload({ jobId, title, privacy, description }, (percent) =>
-        setPhase({ state: "uploading", percent }),
-      );
+      const onProgress = (percent: number) =>
+        setPhase({ state: "uploading", percent });
+      const result = jobId
+        ? await youtubeUpload({ jobId, title, privacy, description }, onProgress)
+        : await youtubeUploadFile(
+            sourceFile as File,
+            { title, privacy, description },
+            onProgress,
+          );
       setPhase({ state: "done", url: result.url, studioUrl: result.studio_url });
     } catch (error) {
       setPhase({
@@ -102,8 +108,11 @@ export function UploadStep({
     link.click();
   };
 
+  const hasSomethingToPost = Boolean(jobId) || Boolean(sourceFile);
+  const needsExport = !jobId && hasCaptions && Boolean(sourceFile);
+
   const canPost =
-    Boolean(jobId) &&
+    hasSomethingToPost &&
     title.trim().length > 0 &&
     status?.authorized &&
     phase.state !== "uploading";
@@ -155,7 +164,7 @@ export function UploadStep({
               <input
                 id="yt-title"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => onTitle(e.target.value)}
                 maxLength={100}
                 placeholder="What people see under your Short"
                 className="mb-3 w-full rounded-lg border border-line bg-ink px-3 py-2.5 text-[13.5px] text-chalk outline-none transition-colors placeholder:text-muted/60 focus:border-muted/60"
@@ -170,7 +179,7 @@ export function UploadStep({
               <textarea
                 id="yt-desc"
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => onDescription(e.target.value)}
                 rows={3}
                 placeholder="Optional"
                 className="mb-3 w-full resize-y rounded-lg border border-line bg-ink px-3 py-2.5 text-[13px] leading-relaxed text-chalk outline-none transition-colors placeholder:text-muted/60 focus:border-muted/60"
@@ -180,7 +189,7 @@ export function UploadStep({
                 {["public", "unlisted", "private"].map((option) => (
                   <button
                     key={option}
-                    onClick={() => setPrivacy(option)}
+                    onClick={() => onPrivacy(option)}
                     className={`flex-1 rounded-lg border px-2 py-2 text-[12.5px] capitalize transition-colors ${
                       privacy === option
                         ? "border-volt/50 bg-volt/[0.07] text-chalk"
@@ -192,7 +201,14 @@ export function UploadStep({
                 ))}
               </div>
 
-              {jobId ? (
+              {needsExport ? (
+                <button
+                  onClick={onBackToCaptions}
+                  className="w-full rounded-xl bg-volt px-4 py-3.5 text-[14px] font-semibold text-ink transition-transform hover:-translate-y-px"
+                >
+                  Export your captions first →
+                </button>
+              ) : (
                 <button
                   onClick={post}
                   disabled={!canPost}
@@ -200,18 +216,34 @@ export function UploadStep({
                 >
                   {phase.state === "uploading"
                     ? `Posting ${Math.round(phase.percent)}%`
-                    : title.trim()
-                      ? "Post to YouTube"
-                      : "Give it a title first"}
-                </button>
-              ) : (
-                <button
-                  onClick={onBackToCaptions}
-                  className="w-full rounded-xl border border-line bg-ink px-4 py-3.5 text-[13.5px] font-semibold text-chalk transition-colors hover:border-muted/50"
-                >
-                  Download the clip first →
+                    : !hasSomethingToPost
+                      ? "Nothing to post yet"
+                      : !title.trim()
+                        ? "Give it a title first"
+                        : jobId
+                          ? "Post to YouTube"
+                          : "Post the clip as it is"}
                 </button>
               )}
+
+              {needsExport ? (
+                <button
+                  onClick={post}
+                  disabled={!canPost}
+                  className="mt-2 w-full rounded-xl border border-line bg-ink px-4 py-3 text-[13.5px] font-semibold text-chalk transition-colors enabled:hover:border-muted/50 disabled:cursor-not-allowed disabled:text-muted"
+                >
+                  {phase.state === "uploading"
+                    ? `Posting ${Math.round(phase.percent)}%`
+                    : "Post without captions anyway"}
+                </button>
+              ) : !jobId && sourceFile ? (
+                <button
+                  onClick={onBackToCaptions}
+                  className="mt-2 w-full rounded-xl border border-line bg-ink px-4 py-3 text-[13.5px] font-semibold text-chalk transition-colors hover:border-muted/50"
+                >
+                  Add captions first →
+                </button>
+              ) : null}
 
               {phase.state === "uploading" ? (
                 <div className="mt-2.5 h-1 overflow-hidden rounded-full bg-line">
@@ -224,52 +256,29 @@ export function UploadStep({
 
               {!jobId ? (
                 <p className="mt-2.5 text-center text-[12px] leading-relaxed text-muted">
-                  Posting sends the captioned file, so it has to be made first.
+                  {needsExport
+                    ? "Your captions haven't been burned in yet, so posting now would send the clip without them."
+                    : "This posts the clip exactly as you dropped it in, with no captions burned on."}
                 </p>
               ) : null}
+
             </>
           ) : (
-            /*
-             * Not signed in — lead with the manual handoff rather than a
-             * sign-in button. Google shows an unverified-app warning on the
-             * way through, and a demo that lands on it because a token quietly
-             * expired is worse than one that just saves the file. Connecting
-             * stays available, deliberately quiet.
-             */
             <>
-              <a
-                href="https://www.youtube.com/upload"
-                target="_blank"
-                rel="noreferrer"
-                onClick={saveByHand}
-                className="block rounded-xl bg-[#FF0033] px-4 py-3.5 text-center text-[14px] font-semibold text-white transition-transform hover:-translate-y-px"
+              <button
+                onClick={connect}
+                disabled={!status?.configured}
+                className="w-full rounded-xl bg-[#FF0033] px-4 py-3.5 text-[14px] font-semibold text-white transition-transform enabled:hover:-translate-y-px disabled:cursor-not-allowed disabled:bg-line disabled:text-muted"
               >
-                Save it &amp; open YouTube
-              </a>
-              <p className="mt-2.5 text-center text-[12px] text-muted">
-                Saves the MP4 and opens YouTube, ready to drop in.
+                {status?.configured
+                  ? "Sign in to YouTube"
+                  : "YouTube posting isn't set up"}
+              </button>
+              <p className="mt-2.5 text-center text-[12px] leading-relaxed text-muted">
+                {status?.configured
+                  ? "Sign in to your channel once and Kaptra posts to it by itself."
+                  : "Add your Google client ID and secret to the backend to post from here."}
               </p>
-              {status?.configured ? (
-                <>
-                  <div className="my-3 flex items-center gap-3">
-                    <span className="h-px flex-1 bg-line" />
-                    <span className="text-[11px] uppercase tracking-wider text-muted">
-                      or
-                    </span>
-                    <span className="h-px flex-1 bg-line" />
-                  </div>
-                  <button
-                    onClick={connect}
-                    className="w-full rounded-xl border border-line bg-ink px-4 py-3 text-[13.5px] font-semibold text-chalk transition-colors hover:border-muted/50"
-                  >
-                    Post automatically instead
-                  </button>
-                  <p className="mt-2 text-center text-[11.5px] leading-relaxed text-muted">
-                    Sign in to your channel once and Kaptra posts straight to
-                    it — no saving, no dragging.
-                  </p>
-                </>
-              ) : null}
             </>
           )}
 
@@ -281,7 +290,7 @@ export function UploadStep({
         </div>
       )}
 
-      {status?.authorized && phase.state !== "done" ? (
+      {phase.state !== "done" ? (
         <button
           onClick={saveByHand}
           disabled={!videoUrl}

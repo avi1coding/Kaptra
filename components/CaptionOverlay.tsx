@@ -9,29 +9,13 @@ import { useElementSize } from "./useElementSize";
 type Props = {
   words: Word[];
   style: CaptionStyle;
-  /** playback position in seconds */
   time: number;
-  /**
-   * Enables drag-to-position. When set, the caption block can be dragged
-   * anywhere on the frame and reports its new centre as percentages.
-   */
   onAnchorChange?: (anchor: { x: number; y: number }) => void;
-  /** Resize by dragging a corner or pinching, as a % of frame height. */
   onSizeChange?: (size: number) => void;
-  /**
-   * Keep a caption on screen even when the playhead is in a gap, so there is
-   * always something to grab while positioning. Only sensible while paused.
-   */
   showGuide?: boolean;
   className?: string;
 };
 
-/**
- * A DOM re-implementation of what libass will draw. It exists so the creator
- * sees the result before committing to a render — the styling maths here
- * deliberately mirrors lib/ass.ts (percent-of-height sizing, same colour rules,
- * same cue chunking) so the preview and the burned-in output agree.
- */
 export function CaptionOverlay({
   words,
   style,
@@ -52,14 +36,6 @@ export function CaptionOverlay({
   );
 
   const live = heldCueAt(cues, time);
-  /*
-   * The guide cue is a positioning aid, not a claim about what renders at this
-   * timestamp — it's drawn faded so it can't be mistaken for the real thing.
-   *
-   * It is only offered once the playhead has reached the first real cue.
-   * Showing it at 0:00 put a caption over the opening frame of clips whose
-   * speech starts ten seconds in, which reads as the render being wrong.
-   */
   const started = cues.length > 0 && time >= cues[0].start;
   const cue = live ?? (showGuide && started ? cues[0] : null);
   const isGuide = !live && cue !== null;
@@ -74,7 +50,6 @@ export function CaptionOverlay({
   const draggable = Boolean(onAnchorChange);
   const resizable = Boolean(onSizeChange);
 
-  /** Live pointers on the caption block, so two of them can mean a pinch. */
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const pinch = useRef<{ distance: number; size: number } | null>(null);
 
@@ -86,11 +61,6 @@ export function CaptionOverlay({
     return Math.hypot(a.x - b.x, a.y - b.y);
   };
 
-  /**
-   * Drag a corner to resize, the way a text box works anywhere else. Scale
-   * tracks distance from the block's centre, so the corner stays under the
-   * finger instead of running away from it.
-   */
   const startResize = (event: React.PointerEvent<HTMLElement>) => {
     if (!onSizeChange) return;
     event.preventDefault();
@@ -139,7 +109,6 @@ export function CaptionOverlay({
 
     const frameBox = frame.getBoundingClientRect();
     const blockBox = block.getBoundingClientRect();
-    // Grab the block where the cursor landed, so it doesn't jump to centre.
     grabOffset.current = {
       x: event.clientX - (blockBox.left + blockBox.width / 2),
       y: event.clientY - (blockBox.top + blockBox.height / 2),
@@ -153,8 +122,6 @@ export function CaptionOverlay({
         pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
       }
 
-      // Two fingers down: pinch to resize rather than drag, so the caption
-      // scales the way any other object on a phone does.
       if (pointers.current.size >= 2 && onSizeChange) {
         const distance = spread();
         if (!pinch.current) {
@@ -228,8 +195,6 @@ export function CaptionOverlay({
   return (
     <div
       ref={ref}
-      // The wrapper stays transparent to pointers so clicking the video still
-      // toggles playback; only the caption block itself is grabbable.
       className={`pointer-events-none absolute inset-0 flex ${className}`}
       style={{ justifyContent: "center", alignItems: justify, ...padding }}
       aria-hidden

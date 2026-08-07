@@ -2,14 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-/**
- * The pipeline as a scrollable gallery — you move through it yourself.
- *
- * Native scroll-snap rather than a JS carousel: trackpad, touch swipe and
- * shift-scroll all work for free, and the arrows just drive the same scroll
- * container. Slides are sized to leave the next one peeking, which is what
- * tells you there's more to see.
- */
 const STEPS = [
   {
     n: "01",
@@ -35,7 +27,6 @@ export function HowItWorks() {
   const trackRef = useRef<HTMLDivElement>(null);
   const [index, setIndex] = useState(0);
 
-  /** Distance between two slide origins — the gap is part of the stride. */
   const stride = () => {
     const track = trackRef.current;
     const first = track?.firstElementChild as HTMLElement | null;
@@ -49,19 +40,10 @@ export function HowItWorks() {
     const step = stride();
     if (!track || !step) return;
 
-    // The final slide rests flush against the right edge, so scrollLeft tops
-    // out well short of (count - 1) * stride. Dividing alone would leave the
-    // last slide unreachable — the dot would stick on the second-to-last and
-    // the next arrow would never disable.
     const atEnd = track.scrollLeft >= track.scrollWidth - track.clientWidth - 2;
     setIndex(atEnd ? STEPS.length - 1 : Math.round(track.scrollLeft / step));
   }, []);
 
-  /**
-   * Drag to swipe. Touch already scrolls the track natively; this gives a
-   * mouse the same gesture, so the carousel behaves the same way whatever
-   * you're using.
-   */
   const startSwipe = (event: React.PointerEvent<HTMLDivElement>) => {
     const track = trackRef.current;
     if (!track || event.pointerType === "touch") return;
@@ -72,8 +54,6 @@ export function HowItWorks() {
     const move = (e: PointerEvent) => {
       const dx = e.clientX - startX;
       if (Math.abs(dx) > 3) moved = true;
-      // Snap points fight a drag in progress, so they're suspended until the
-      // pointer lifts and the track can settle on the nearest slide.
       track.style.scrollSnapType = "none";
       track.scrollLeft = startLeft - dx;
     };
@@ -163,8 +143,6 @@ export function HowItWorks() {
             onClick={() => goTo(i)}
             aria-label={`Step ${step.n}: ${step.title}`}
             aria-current={i === index}
-            // The dot stays small; the button around it is thumb-sized. A
-            // 6px-tall tap target is a coin toss on a phone.
             className="grid h-9 place-items-center px-1.5"
           >
             <span
@@ -214,9 +192,6 @@ function Arrow({
   );
 }
 
-/* ── the four vignettes ──────────────────────────────────────────────────── */
-
-/** The same line in three of the built-in looks. */
 const LOOKS = [
   { label: "Punch", cls: "bg-volt text-ink", plain: "text-chalk" },
   { label: "Neon", cls: "bg-[#FF4D6D] text-white", plain: "text-chalk" },

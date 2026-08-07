@@ -2,25 +2,9 @@
 
 import { useCallback, useRef, useState } from "react";
 
-/** How long two edits to the same control count as one undo step. */
 const COALESCE_MS = 700;
 const LIMIT = 60;
 
-/**
- * Undo/redo over a single document value.
- *
- * The wrinkle is continuous controls: dragging a caption or sweeping a slider
- * fires dozens of updates a second, and pushing each one would mean dozens of
- * undos to get back across a single gesture. Callers pass a `coalesce` key —
- * consecutive edits sharing that key inside a short window replace the top of
- * the stack instead of stacking up, so one gesture is one undo.
- *
- * All history bookkeeping happens *outside* setState. React invokes state
- * updaters twice under StrictMode, so mutating the stacks inside one pushed
- * every entry twice and left undo restoring the value it had just replaced.
- * `valueRef` mirrors the committed value so the next state can be computed
- * without an updater at all.
- */
 export function useUndoable<T>(initial: T) {
   const [value, setValue] = useState<T>(initial);
   const valueRef = useRef<T>(initial);
@@ -48,8 +32,6 @@ export function useUndoable<T>(initial: T) {
         now - lastAt.current < COALESCE_MS &&
         past.current.length > 0;
 
-      // A merged edit keeps the snapshot already on the stack — that's the
-      // state from *before* the gesture started, which is what undo wants.
       if (!merges) {
         past.current.push(prev);
         if (past.current.length > LIMIT) past.current.shift();
@@ -79,7 +61,6 @@ export function useUndoable<T>(initial: T) {
     commit(next);
   }, [commit]);
 
-  /** Replace the value and drop the history — for loading a new document. */
   const reset = useCallback(
     (next: T | ((prev: T) => T)) => {
       const resolved =

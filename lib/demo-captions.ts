@@ -1,15 +1,6 @@
 import { autoEmphasize } from "./emphasis";
 import type { Word } from "./types";
 
-/**
- * The real transcript of the clip on the landing page, produced by running it
- * through Kaptra itself — Whisper's music pass, since the audio is a track
- * rather than speech.
- *
- * Timings are the ones Whisper measured, so the captions land on the beat the
- * way they do in the Studio. Hand-writing a script here would have meant the
- * "difference" section demonstrating something the product doesn't actually do.
- */
 const TRANSCRIBED: Word[] = [
   { text: "The", start: 0.26, end: 0.98 },
   { text: "morning", start: 0.98, end: 1.44 },
@@ -35,5 +26,4 @@ const TRANSCRIBED: Word[] = [
   { text: "are", start: 8.34, end: 8.64 },
 ];
 
-/** Emphasis comes from the same pass the Studio runs, not from hand-picking. */
 export const DEMO_WORDS: Word[] = autoEmphasize(TRANSCRIBED);

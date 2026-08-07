@@ -20,8 +20,6 @@
   color-scheme: dark;
 }
 
-/* Nav-anchor jumps glide instead of snapping — but never for anyone who has
-   asked the OS for less motion. */
 @media (prefers-reduced-motion: no-preference) {
   html {
     scroll-behavior: smooth;
@@ -39,7 +37,6 @@ body {
   font-family: var(--font-sans);
 }
 
-/* Faint grid so large dark areas don't read as empty. */
 .grid-bg {
   background-image:
     linear-gradient(to right, rgba(255, 255, 255, 0.028) 1px, transparent 1px),
@@ -51,7 +48,6 @@ body {
   box-shadow: 0 0 0 1px rgba(255, 230, 0, 0.25), 0 18px 60px -18px rgba(255, 230, 0, 0.35);
 }
 
-/* Native range inputs are unstyleable enough to be worth overriding wholesale. */
 input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
@@ -116,8 +112,6 @@ input[type="color"]::-webkit-color-swatch {
   border-radius: 8px;
 }
 
-/* Thin, dark scrollbars for the Studio's independently scrolling columns —
-   the default macOS overlay bars sit awkwardly over panel borders. */
 .scroll-thin {
   scrollbar-width: thin;
   scrollbar-color: var(--color-line) transparent;
@@ -181,7 +175,6 @@ input[type="color"]::-webkit-color-swatch {
   }
 }
 
-/* Carousel tracks scroll by drag/swipe, so the bar is redundant chrome. */
 .no-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;

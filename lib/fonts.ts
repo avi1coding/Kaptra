@@ -1,10 +1,5 @@
 import type { FontKey } from "./types";
 
-/**
- * Each font maps to two things: a CSS stack for the in-browser preview, and the
- * font name ffmpeg/libass will look up on the render machine. Keep the two in
- * sync or the preview will lie about the final render.
- */
 export const FONTS: Record<
   FontKey,
   { label: string; css: string; ass: string; weight: number; tracking: string }

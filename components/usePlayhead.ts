@@ -2,14 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-/**
- * A controllable playhead driven by requestAnimationFrame.
- *
- * The Studio needs this because in demo mode there is no <video> to read
- * currentTime from — but the creator still expects play, pause and scrub to
- * work while they're tuning a style. Time accumulates from frame deltas rather
- * than from a fixed start point, so pausing and seeking don't desync it.
- */
 export function usePlayhead(duration: number, enabled = true) {
   const [time, setTime] = useState(0);
   const [playing, setPlaying] = useState(true);

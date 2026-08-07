@@ -3,18 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Step as StudioStep } from "./StepBar";
 
-/** Bump the version to re-show the tour to people who've already seen it. */
 const SEEN_KEY = "kaptra.tour.v5";
 export const TOUR_EVENT = "kaptra:tour";
 
 type Step = {
-  /** matches a `data-tour="…"` attribute in the Studio; null = centred card */
   target: string | null;
-  /**
-   * Which Studio step has to be on screen for `target` to exist. Steps other
-   * than the current one are rendered but hidden, so without this the tour
-   * measured a zero-sized box and dropped its card in the corner.
-   */
   at?: StudioStep;
   title: string;
   body: string;
@@ -22,15 +15,10 @@ type Step = {
 
 const STEPS: Step[] = [
   {
-    target: "steps",
-    title: "Clip in, captioned Short out",
-    body: "Three steps: pick your clip, caption it, post it. Jump between them however you like — captions are optional too, if you only came for the upload.",
-  },
-  {
     target: "source",
     at: "captions",
     title: "Reads almost any video, in 100 languages",
-    body: "MP4, MOV, MKV, AVI, WebM and more, at any shape or size. It understands 100 languages, and your captions can come out in a different one from the audio.",
+    body: "MP4, MOV, MKV, AVI, WebM and 24 more, any shape, up to 200 MB. It understands 100 languages, and your captions can come out in a different one from the audio.",
   },
   {
     target: "transcript",
@@ -74,21 +62,13 @@ export function Tour({
   onPreview,
 }: {
   currentStep?: StudioStep;
-  /** True once captions have actually been asked for. */
   armed?: boolean;
   onNavigate?: (step: StudioStep) => void;
-  /**
-   * Reveals the captioning controls for the duration of the tour without
-   * actually transcribing. Half these steps describe panels that only exist
-   * once captions are asked for, and a showcase shouldn't start work the user
-   * hasn't agreed to.
-   */
   onPreview?: (on: boolean) => void;
 } = {}) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
-  // Where to put the user back when the tour ends.
   const [returnTo, setReturnTo] = useState<StudioStep | null>(null);
 
   const finish = useCallback(() => {
@@ -103,7 +83,6 @@ export function Tour({
     }
   }, [returnTo, onNavigate, onPreview]);
 
-  /* the "Tour" button in the nav, from anywhere */
   useEffect(() => {
     const reopen = () => {
       setStep(0);
@@ -113,11 +92,6 @@ export function Tour({
     return () => window.removeEventListener(TOUR_EVENT, reopen);
   }, []);
 
-  /*
-   * First visit — held back until captions have actually been asked for.
-   * Opening it any earlier meant the cards described panels that weren't on
-   * screen yet, and a tour arrived before the thing it was touring.
-   */
   useEffect(() => {
     if (currentStep !== "captions" || !armed) return;
     try {
@@ -127,7 +101,6 @@ export function Tour({
     }
   }, [currentStep, armed]);
 
-  /* put the Studio on the screen this step is describing */
   useEffect(() => {
     if (!open) return;
     onPreview?.(true);
@@ -138,7 +111,6 @@ export function Tour({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, step]);
 
-  /* track the highlighted element through scrolls and resizes */
   useEffect(() => {
     if (!open) return;
 
@@ -149,8 +121,6 @@ export function Tour({
     }
 
     const el = document.querySelector(`[data-tour="${target}"]`);
-    // A hidden panel measures 0×0; treat that as "not ready" so the card
-    // centres instead of pinning itself to the top-left corner.
     if (!el || el.getBoundingClientRect().width === 0) {
       setRect(null);
       const retry = setTimeout(() => {
@@ -168,7 +138,6 @@ export function Tour({
     const timer = setTimeout(update, 400); // settle after the smooth scroll
 
     window.addEventListener("resize", update);
-    // capture:true — the Studio's columns scroll independently of the page
     window.addEventListener("scroll", update, true);
     return () => {
       clearTimeout(timer);
@@ -177,7 +146,6 @@ export function Tour({
     };
   }, [open, step]);
 
-  /* keyboard */
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -303,10 +271,6 @@ export function Tour({
   );
 }
 
-/**
- * Place the card beside the spotlight — below it when there's room, above it
- * when there isn't, and dead centre when no element is highlighted.
- */
 function cardPosition(rect: DOMRect | null): React.CSSProperties {
   if (typeof window === "undefined" || !rect) {
     return {
@@ -317,8 +281,6 @@ function cardPosition(rect: DOMRect | null): React.CSSProperties {
   }
 
   const { innerWidth: vw, innerHeight: vh } = window;
-  // Feature copy runs longer than the old how-to text; under-estimating
-  // this pushed cards off the bottom of shorter viewports.
   const CARD_H = 290;
   const gap = 18;
 
@@ -328,7 +290,6 @@ function cardPosition(rect: DOMRect | null): React.CSSProperties {
   const top =
     below + CARD_H < vh ? below : above > 0 ? above : Math.max(16, vh / 2 - CARD_H / 2);
 
-  // Prefer beside the target on wide screens, so the card never covers it.
   const rightRoom = vw - rect.right - gap;
   const leftRoom = rect.left - gap;
   if (below + CARD_H >= vh && above <= 0) {

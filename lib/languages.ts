@@ -1,15 +1,6 @@
-/**
- * Every language Whisper can transcribe — the exact code list from
- * faster-whisper's tokenizer, with English and native names resolved via Intl.
- *
- * English is special: Whisper translates into it natively in the same pass, so
- * it needs no API key and keeps the best timing. Every other target is a
- * separate translation step on the backend and needs ANTHROPIC_API_KEY.
- */
 export type TargetLanguage = {
   code: string;
   name: string;
-  /** endonym, when it differs from the English name */
   native?: string;
 };
 
@@ -122,11 +113,6 @@ export function languageByCode(code: string) {
   return TARGET_LANGUAGES.find((l) => l.code === code);
 }
 
-/**
- * Rank matches so typing "ja" surfaces Japanese before Punjabi: exact code
- * first, then name prefix, then native-name prefix, then anything containing
- * the query.
- */
 export function searchLanguages(query: string): TargetLanguage[] {
   const q = query.trim().toLowerCase();
   if (!q) return TARGET_LANGUAGES;

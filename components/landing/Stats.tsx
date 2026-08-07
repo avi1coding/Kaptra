@@ -9,12 +9,6 @@ type Stat = {
   label: string;
 };
 
-/**
- * Every number here is derived from the code or from Whisper itself — no
- * invented market statistics. `languages` comes from faster-whisper's tokenizer
- * table, `formats` from lib/video-formats.ts, `precision` from the .ass
- * timestamp format, which is centisecond-resolution by specification.
- */
 export function Stats({ formats, languages }: { formats: number; languages: number }) {
   const STATS: Stat[] = [
     {
@@ -68,8 +62,6 @@ export function Stats({ formats, languages }: { formats: number; languages: numb
       {STATS.map((stat, i) => (
         <div
           key={stat.label}
-          // Explicit per-cell borders: `divide-x` plus nth-child overrides
-          // fought each other and dropped two of the three dividers.
           className={[
             "border-line px-5 py-8 sm:px-7",
             i % 2 === 1 ? "border-l" : "",
@@ -127,7 +119,6 @@ function Counter({
     const tick = (now: number) => {
       if (start === null) start = now;
       const t = Math.min(1, (now - start) / DURATION);
-      // ease-out-cubic: fast off the mark, settles on the number
       setShown(value * (1 - Math.pow(1 - t, 3)));
       if (t < 1) frame = requestAnimationFrame(tick);
     };

@@ -1,27 +1,3 @@
-"""
-YouTube upload — OAuth 2.0 + the resumable upload protocol, over plain HTTP.
-
-Deliberately no google-api-python-client: the flow is two token calls and two
-uploads, and `requests` is already a dependency. Tokens live in memory, which
-suits a locally-run studio — restart the backend and you reconnect.
-
-Setup (one time, in Google Cloud Console):
-
-  1. Create a project and enable **YouTube Data API v3**
-  2. Configure the OAuth consent screen, adding your Google account as a
-     test user, with scope `.../auth/youtube.upload`
-  3. Create an **OAuth client ID** of type *Web application* with redirect URI
-     http://localhost:8000/youtube/callback
-  4. Export the credentials before starting the backend:
-
-        export GOOGLE_CLIENT_ID=...apps.googleusercontent.com
-        export GOOGLE_CLIENT_SECRET=...
-
-⚠️ Until the Google project passes API verification, videos uploaded through the
-API are **locked to private** regardless of the privacy setting sent. That is
-Google's policy for unverified projects, not a Kaptra limitation.
-"""
-
 from __future__ import annotations
 
 import logging
@@ -47,26 +23,21 @@ UPLOAD_URL = (
     "?uploadType=resumable&part=snippet,status"
 )
 
-# Chunked so upload progress can be reported; must be a multiple of 256 KiB.
 CHUNK_SIZE = 1024 * 1024 * 4
 
 _tokens: dict = {}
 _lock = threading.Lock()
 
-
 def is_configured() -> bool:
     return bool(CLIENT_ID and CLIENT_SECRET)
-
 
 def is_authorized() -> bool:
     with _lock:
         return bool(_tokens.get("refresh_token") or _tokens.get("access_token"))
 
-
 def forget() -> None:
     with _lock:
         _tokens.clear()
-
 
 def authorize_url(state: str = "") -> str:
     params = {
@@ -74,8 +45,6 @@ def authorize_url(state: str = "") -> str:
         "redirect_uri": REDIRECT_URI,
         "response_type": "code",
         "scope": SCOPE,
-        # offline + consent is what actually yields a refresh_token; without
-        # both, a second authorisation returns only a short-lived access token.
         "access_type": "offline",
         "prompt": "consent",
         "include_granted_scopes": "true",
@@ -83,7 +52,6 @@ def authorize_url(state: str = "") -> str:
     if state:
         params["state"] = state
     return AUTH_URL + "?" + requests.compat.urlencode(params)
-
 
 def exchange_code(code: str) -> None:
     response = requests.post(
@@ -103,9 +71,7 @@ def exchange_code(code: str) -> None:
         _tokens.update(payload)
         _tokens["expires_at"] = time.time() + payload.get("expires_in", 3500)
 
-
 def access_token() -> str:
-    """Current access token, refreshed if it's within a minute of expiring."""
     with _lock:
         token = _tokens.get("access_token")
         expires_at = _tokens.get("expires_at", 0)
@@ -134,7 +100,6 @@ def access_token() -> str:
         _tokens["expires_at"] = time.time() + payload.get("expires_in", 3500)
         return _tokens["access_token"]
 
-
 def upload(
     path,
     *,
@@ -143,13 +108,6 @@ def upload(
     privacy: str = "private",
     on_progress=None,
 ) -> str:
-    """
-    Resumable upload. Returns the new video id.
-
-    Step one POSTs the metadata and gets back a one-shot session URL; step two
-    PUTs the bytes to it in chunks, which is what makes progress reportable and
-    lets a dropped connection resume rather than restart.
-    """
     token = access_token()
     size = path.stat().st_size
 
@@ -157,7 +115,6 @@ def upload(
         "snippet": {
             "title": title[:100] or "Untitled",
             "description": description[:5000],
-            # 22 = People & Blogs, the safest default for creator uploads.
             "categoryId": "22",
         },
         "status": {
@@ -166,6 +123,13 @@ def upload(
             "selfDeclaredMadeForKids": False,
         },
     }
+
+    log.info(
+        "sending metadata: title=%r description=%d chars privacy=%r",
+        metadata["snippet"]["title"],
+        len(metadata["snippet"]["description"]),
+        metadata["status"]["privacyStatus"],
+    )
 
     start = requests.post(
         UPLOAD_URL,
@@ -201,12 +165,19 @@ def upload(
                 timeout=600,
             )
 
-            # 308 means "keep going"; 200/201 means the upload finished.
             if response.status_code in (200, 201):
                 sent = size
                 if on_progress:
                     on_progress(100.0)
-                return response.json().get("id", "")
+                body = response.json()
+                saved = body.get("snippet") or {}
+                log.info(
+                    "youtube saved: title=%r description=%d chars privacy=%r",
+                    saved.get("title"),
+                    len(saved.get("description") or ""),
+                    (body.get("status") or {}).get("privacyStatus"),
+                )
+                return body.get("id", "")
             if response.status_code != 308:
                 response.raise_for_status()
                 raise RuntimeError(

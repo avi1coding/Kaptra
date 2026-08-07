@@ -10,8 +10,7 @@ type Props = {
   backendConfigured: boolean;
   onRender: () => void;
   onReset: () => void;
-  /** The clip's own name, kept so the download isn't generically titled. */
-  fileName: string;
+  onUpload: () => void;
 };
 
 export function ExportCard({
@@ -20,7 +19,7 @@ export function ExportCard({
   backendConfigured,
   onRender,
   onReset,
-  fileName,
+  onUpload,
 }: Props) {
   const busy = isBusy(status);
 
@@ -67,13 +66,12 @@ export function ExportCard({
             Your captioned Short is ready.
           </p>
           <div className="mt-2.5 flex gap-2">
-            <a
-              href={status.url}
-              download={fileName}
+            <button
+              onClick={onUpload}
               className="rounded-lg bg-mint px-3 py-1.5 text-[12.5px] font-semibold text-ink"
             >
-              Download again
-            </a>
+              Upload to YouTube
+            </button>
             <button
               onClick={onReset}
               className="rounded-lg border border-line px-3 py-1.5 text-[12.5px] text-muted transition-colors hover:text-chalk"
@@ -82,8 +80,8 @@ export function ExportCard({
             </button>
           </div>
           <p className="mt-2.5 text-[11.5px] leading-relaxed text-muted">
-            Next: add a title and thumbnail on the steps above, or head straight
-            to Upload.
+            The file has been saved to your downloads. Post it to your channel
+            without leaving Kaptra.
           </p>
         </div>
       ) : null}

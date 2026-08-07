@@ -7,7 +7,6 @@ import { usePlayhead } from "@/components/usePlayhead";
 import { MOCK_DURATION, MOCK_WORDS } from "@/lib/mock";
 import { PRESETS } from "@/lib/presets";
 
-/** Live, interactive proof on the landing page — no upload, no backend. */
 export function HeroDemo() {
   const [presetId, setPresetId] = useState(PRESETS[0].id);
   const preset = PRESETS.find((p) => p.id === presetId) ?? PRESETS[0];

@@ -17,11 +17,6 @@ export function isBusy(status: RenderStatus) {
   );
 }
 
-/**
- * Upload is the first third of the bar, the encode the rest. Transcription has
- * no measurable progress — Whisper reports nothing until it's finished — so it
- * sits at a fixed point and pulses instead of pretending to advance.
- */
 export function progressPercent(status: RenderStatus): number {
   if (status.state === "uploading") return status.progress * 33;
   if (status.state === "transcribing") return 55;
@@ -30,7 +25,6 @@ export function progressPercent(status: RenderStatus): number {
   return 0;
 }
 
-/** True when the number shown is measured rather than a placeholder. */
 export function hasRealPercent(status: RenderStatus) {
   return status.state === "uploading" || status.state === "rendering";
 }
